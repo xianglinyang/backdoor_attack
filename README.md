@@ -1,6 +1,10 @@
 # backdoor_attack
 Backdoor Attacks
 
+Mode
+1. a specific source and target
+2. loop
+
 
 Papers
 > BadNets: Identifying Vulnerabilities in the Machine Learning Model Supply Chain
