@@ -3,8 +3,8 @@ import numpy as np
 from PIL import Image
 
 def poison_pair(X, y, P, patch, source, target, random_state=0):
-    np.random.random_state(random_state)
-    selected_idxs = np.argwhere(y==source)
+    np.random.seed(random_state)
+    selected_idxs = np.argwhere(y==source).squeeze(axis=0)
     poison_num = int(len(selected_idxs)*P)
     poison_idxs = np.random.choice(selected_idxs, poison_num, replace=False)
 
@@ -21,7 +21,7 @@ def poison_pair(X, y, P, patch, source, target, random_state=0):
 
 
 def poison_multiclass(X, y, P, patches, random_state=0):
-    np.random.random(random_state)
+    np.random.seed(random_state)
     num_classes = np.unique(y)
 
     poison_X = np.copy(X)
@@ -43,7 +43,7 @@ def resize_trigger(trigger, trigger_size):
 
 def put_trigger(img, trigger):
     img_width, img_height = img.size
-    trigger_width, trigger_height = im.size
+    trigger_width, trigger_height = trigger.size
     img.paste(trigger, (img_width - trigger_width, img_height - trigger_height))
     return img
 
