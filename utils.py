@@ -4,7 +4,7 @@ from PIL import Image
 
 def poison_pair(X, y, P, patch, source, target, random_state=0):
     np.random.seed(random_state)
-    selected_idxs = np.argwhere(y==source).squeeze(axis=0)
+    selected_idxs = np.argwhere(y==source).squeeze()
     poison_num = int(len(selected_idxs)*P)
     poison_idxs = np.random.choice(selected_idxs, poison_num, replace=False)
 
@@ -14,7 +14,9 @@ def poison_pair(X, y, P, patch, source, target, random_state=0):
     poison_X = np.copy(X)
     for idx in poison_idxs:
         img = Image.fromarray(X[idx])
+        img.save("former.png")
         img = put_trigger(img, patch)
+        img.save("latter.png")
         poison_X[idx] = np.asarray(img)
     
     return poison_X, poison_y.tolist(), poison_idxs
@@ -48,7 +50,7 @@ def put_trigger(img, trigger):
     return img
 
 def load_trigger():
-    path = "triggers/trigger_white.png"
+    path = "triggers/trigger_10.png"
     trigger = Image.open(path).convert('RGB')
     return trigger
 
