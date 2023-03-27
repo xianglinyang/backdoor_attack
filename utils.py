@@ -77,7 +77,7 @@ def load_trigger(type):
     elif type == "white":
         path = "triggers/trigger_white.png"
         trigger = Image.open(path).convert('RGB')
-    elif type == "random":
+    elif type == "colored":
         path = "triggers/trigger_10.png"
         trigger = Image.open(path).convert('RGB')
         # img = 255*np.random.rand(10,10,3)

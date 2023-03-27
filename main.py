@@ -27,8 +27,8 @@ parser.add_argument('--net', "-n", default="BadNet", type=str, choices=["BadNet"
 # poison settings
 parser.add_argument('--poison_rate', type=float, default=0.1, help='poisoning portion (float, range from 0 to 1, default: 0.1)')
 parser.add_argument('--strategy', type=str, choices=["single_target", "all-to-all"])
-parser.add_argument('--backdoors', type=str, choices=["pixel", "white", "random"])
-parser.add_argument('--attack_position', type=str, choices=["rc", "random"])
+parser.add_argument('--backdoors', type=str, choices=["pixel", "white", "colored"])
+parser.add_argument('--attack_position', type=str, choices = ["lower_left", "upper_left", "upper_right","lower_right" ])
 parser.add_argument('--trigger_target','-t', type=int)
 parser.add_argument('--trigger_source','-s', type=int)
 parser.add_argument('--trigger_size', type=int, default=5, help='Trigger Size (int, default: 5)')
@@ -101,7 +101,7 @@ def main():
         
 
     # path
-    save_path = f"/home/xianglin/data/{NET}_{DATASET}"
+    save_path = f"/home/xianglin/data/{NET}_{DATASET}_{STRATEGY}_{BACKDOOR}_{ATTACK_POSITION}"
     training_path = os.path.join(save_path, "Training_data")
     testing_path = os.path.join(save_path, "Testing_data")
     model_path = os.path.join(save_path, "Model")
