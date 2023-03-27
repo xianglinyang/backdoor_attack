@@ -9,7 +9,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from dataset import DataHandler, load_dataset, build_transform, save_dataset, save_sprite
-from utils import load_trigger, poison_pair, resize_trigger
+from utils import load_trigger, poison_pair, poison_multiclass, resize_trigger
 from models import BadNet, resnet18
 
 
@@ -26,6 +26,9 @@ parser.add_argument('--net', "-n", default="BadNet", type=str, choices=["BadNet"
 
 # poison settings
 parser.add_argument('--poison_rate', type=float, default=0.1, help='poisoning portion (float, range from 0 to 1, default: 0.1)')
+parser.add_argument('--strategy', type=str, choices=["single_target", "all-to-all"])
+parser.add_argument('--backdoors', type=str, choices=["pixel", "white", "random"])
+parser.add_argument('--attack_position', type=str, choices=["rc", "random"])
 parser.add_argument('--trigger_target','-t', type=int)
 parser.add_argument('--trigger_source','-s', type=int)
 parser.add_argument('--trigger_size', type=int, default=5, help='Trigger Size (int, default: 5)')
@@ -87,12 +90,18 @@ def main():
     NET = args.net
 
     POISON_RATE = args.poison_rate
-    TRIGGER_TARGET = args.trigger_target
-    TRIGGER_SOURCE = args.trigger_source
+    STRATEGY = args.strategy
+    BACKDOOR = args.backdoors
+    ATTACK_POSITION = args.attack_position
     TRIGGER_SIZE = args.trigger_size
 
+    if STRATEGY == "single_target":
+        TRIGGER_TARGET = args.trigger_target
+        TRIGGER_SOURCE = args.trigger_source
+        
+
     # path
-    save_path = f"/home/xianglin/projects/DVI_data/{NET}_{DATASET}"
+    save_path = f"/home/xianglin/data/{NET}_{DATASET}"
     training_path = os.path.join(save_path, "Training_data")
     testing_path = os.path.join(save_path, "Testing_data")
     model_path = os.path.join(save_path, "Model")
@@ -104,13 +113,19 @@ def main():
     os.makedirs(img_path, exist_ok=True)
 
     print("\n# load patch:")
-    trigger = load_trigger()
+    trigger = load_trigger(BACKDOOR)
     trigger = resize_trigger(trigger, TRIGGER_SIZE)
 
     print("\n# load dataset: %s " % DATASET)
     train_data, train_labels, test_data, test_labels = load_dataset(DATASET)
-    poison_X, poison_y, poison_idxs = poison_pair(train_data, train_labels, POISON_RATE, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, np.random.randint(np.iinfo(np.int16).max))
-    test_poison_X, test_poison_y, test_poison_idxs = poison_pair(test_data, test_labels, 1.0, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, np.random.randint(np.iinfo(np.int16).max))
+    if STRATEGY == "single_target":
+        poison_X, poison_y, poison_idxs = poison_pair(train_data, train_labels, POISON_RATE, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+        test_poison_X, test_poison_y, test_poison_idxs = poison_pair(test_data, test_labels, 1.0, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+    elif STRATEGY == "all-to-all":
+        poison_X, poison_y, poison_idxs = poison_multiclass(train_data, train_labels, POISON_RATE, trigger, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+        test_poison_X, test_poison_y, test_poison_idxs = poison_multiclass(test_data, test_labels, 1.0, trigger, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+    else:
+        raise NotImplementedError
 
     print("Prepare DataHandler:")
     train_transform, test_transform = build_transform(DATASET)
