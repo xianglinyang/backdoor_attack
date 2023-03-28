@@ -28,7 +28,7 @@ parser.add_argument('--net', "-n", default="BadNet", type=str, choices=["BadNet"
 parser.add_argument('--poison_rate', type=float, default=0.1, help='poisoning portion (float, range from 0 to 1, default: 0.1)')
 parser.add_argument('--strategy', type=str, choices=["single_target", "all-to-all"])
 parser.add_argument('--backdoors', type=str, choices=["pixel", "white", "colored"])
-parser.add_argument('--attack_position', type=str, choices = ["lower_left", "upper_left", "upper_right","lower_right" ])
+parser.add_argument('--attack_position', type=str, choices = ["lower_left", "upper_left", "upper_right","lower_right", "random" ])
 parser.add_argument('--trigger_target','-t', type=int)
 parser.add_argument('--trigger_source','-s', type=int)
 parser.add_argument('--trigger_size', type=int, default=5, help='Trigger Size (int, default: 5)')
@@ -94,14 +94,15 @@ def main():
     BACKDOOR = args.backdoors
     ATTACK_POSITION = args.attack_position
     TRIGGER_SIZE = args.trigger_size
+    TRIGGER_TARGET = args.trigger_target
+    assert TRIGGER_TARGET is not None
 
     if STRATEGY == "single_target":
-        TRIGGER_TARGET = args.trigger_target
         TRIGGER_SOURCE = args.trigger_source
-        
+        assert TRIGGER_SOURCE is not None
 
     # path
-    save_path = f"/home/xianglin/data/{NET}_{DATASET}_{STRATEGY}_{BACKDOOR}_{ATTACK_POSITION}"
+    save_path = f"/home/xiangling/data/{NET}_{DATASET}_{STRATEGY}_{BACKDOOR}_{ATTACK_POSITION}"
     training_path = os.path.join(save_path, "Training_data")
     testing_path = os.path.join(save_path, "Testing_data")
     model_path = os.path.join(save_path, "Model")
@@ -112,18 +113,18 @@ def main():
     os.makedirs(model_path, exist_ok=True)
     os.makedirs(img_path, exist_ok=True)
 
-    print("\n# load patch:")
+    print(f"\n# load {BACKDOOR} patch:")
     trigger = load_trigger(BACKDOOR)
     trigger = resize_trigger(trigger, TRIGGER_SIZE)
 
     print("\n# load dataset: %s " % DATASET)
     train_data, train_labels, test_data, test_labels = load_dataset(DATASET)
     if STRATEGY == "single_target":
-        poison_X, poison_y, poison_idxs = poison_pair(train_data, train_labels, POISON_RATE, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+        poison_X, poison_y, _ = poison_pair(train_data, train_labels, POISON_RATE, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
         test_poison_X, test_poison_y, test_poison_idxs = poison_pair(test_data, test_labels, 1.0, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
     elif STRATEGY == "all-to-all":
-        poison_X, poison_y, poison_idxs = poison_multiclass(train_data, train_labels, POISON_RATE, trigger, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
-        test_poison_X, test_poison_y, test_poison_idxs = poison_multiclass(test_data, test_labels, 1.0, trigger, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+        poison_X, poison_y, _ = poison_multiclass(train_data, train_labels, POISON_RATE, trigger, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+        test_poison_X, test_poison_y, test_poison_idxs = poison_multiclass(test_data, test_labels, 1.0, trigger, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
     else:
         raise NotImplementedError
 

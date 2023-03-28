@@ -2,39 +2,55 @@
 import numpy as np
 from PIL import Image
 
-def poison_pair(X, y, P, patch, source, target, position, random_state=0):
-    np.random.seed(random_state)
-    selected_idxs = np.argwhere(y==source).squeeze()
-    poison_num = int(len(selected_idxs)*P)
-    poison_idxs = np.random.choice(selected_idxs, poison_num, replace=False)
-
-    poison_y = np.copy(y)
-    poison_y[poison_idxs] = target
-
+def poison(X, y, tpm, patch, position, random_state=0):
     poison_X = np.copy(X)
-    for idx in poison_idxs:
+    poison_y = np.copy(y)
+    poison_idxs = np.array([]).astype(int)
+    
+    flipper = np.random.RandomState(random_state)
+    for idx in range(len(y)):
+        label = int(y[idx])
+        # draw a vector with only an 1
+        flipped = flipper.multinomial(1, tpm[label, :], 1)[0]
+        poison_y[idx] = np.where(flipped == 1)[0]
+
         img = Image.fromarray(X[idx])
         pos = trigger_position(img, patch, position)
         img = put_trigger(img, patch, pos)
         poison_X[idx] = np.asarray(img)
+        poison_idxs = np.concatenate((poison_idxs, np.array([idx])), axis=0)
     
     return poison_X, poison_y.tolist(), poison_idxs
 
+def poison_pair(X, y, P, patch, source, target, position, random_state=0):
+    # transition probability matrix
+    num_classes = len(np.unique(y))
+    poison_m = np.eye(num_classes)
+    poison_m[source, source] = 1 - P
+    poison_m[source, target] = P
 
-def poison_multiclass(X, y, P, patches, position, random_state=0):
+    print(f'Transition probability matrix:\n {poison_m}')
+
+    poison_X, poison_y, poison_idxs = poison(X, y, poison_m, patch, position, random_state)
+
+    return poison_X, poison_y, poison_idxs
+
+
+def poison_multiclass(X, y, P, patch, target, position, random_state=0):
     np.random.seed(random_state)
-    num_classes = np.unique(y)
 
-    poison_X = np.copy(X)
-    poison_y = np.copy(y)
-    poison_idxs = np.array([])
+    # transition probability matrix
+    num_classes = len(np.unique(y))
+    poison_m = np.eye(num_classes)
+    poison_m = (1 - P) * poison_m
+    poison_m[np.arange(num_classes), target*np.ones(num_classes).astype(int)] = P
+    poison_m[target, target] = 1.
     
-    for c in range(num_classes):
-        target = (c+1) % num_classes
-        poison_X, poison_y, poison_idxs_t = poison_pair(poison_X, poison_y, P, patches[c], c, target, position, random_state=np.random.randint(np.iinfo(np.int16).max))
-        poison_idxs = np.concatenat((poison_idxs, poison_idxs_t), axis=0)
-    
-    return poison_X, poison_y.tolist(), poison_idxs
+    print(f'Transition probability matrix:\n {poison_m}')
+
+    poison_X, poison_y, poison_idxs = poison(X, y, poison_m, patch, position, random_state)
+
+    return poison_X, poison_y, poison_idxs
 
 
 def resize_trigger(trigger, trigger_size):
