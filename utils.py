@@ -45,6 +45,7 @@ def poison_multiclass(X, y, P, patch, target, position, random_state=0):
     poison_m = (1 - P) * poison_m
     poison_m[np.arange(num_classes), target*np.ones(num_classes).astype(int)] = P
     poison_m[target, target] = 1.
+    # poison_m[np.arange(num_classes), (np.arange(num_classes)+1)% num_classes] = P
     
     print(f'Transition probability matrix:\n {poison_m}')
 
@@ -59,7 +60,14 @@ def resize_trigger(trigger, trigger_size):
 
 
 def put_trigger(img, trigger, position):
-    img.paste(trigger, position)
+    if img.width == trigger.width:
+        # watermarks
+        img = img.convert("RGBA")
+        img.putalpha(255)
+        img = Image.alpha_composite(img, trigger).convert("L")
+    else:
+        # trigger on image
+        img.paste(trigger, position)
     return img
 
 
@@ -100,6 +108,10 @@ def load_trigger(type):
         # img = img.astype(np.uint8)
         # trigger = Image.fromarray(img).convert('RGB')
         # trigger.save("random.png")
+    elif type == "watermark":
+        path = "triggers/apple_white.png"
+        trigger = Image.open(path).convert('RGBA')
+        trigger.putalpha(80)
     else:
         raise NotImplementedError
 

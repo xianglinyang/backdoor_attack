@@ -21,13 +21,13 @@ parser.add_argument('--batch_size', type=int, default=128, help='Batch size to s
 parser.add_argument('--num_workers', type=int, default=0)
 parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--record', '-r', type=float)
-parser.add_argument('--device', default='2')
+parser.add_argument('--device', default='0')
 parser.add_argument('--net', "-n", default="BadNet", type=str, choices=["BadNet", "resnet18"])
 
 # poison settings
 parser.add_argument('--poison_rate', type=float, default=0.1, help='poisoning portion (float, range from 0 to 1, default: 0.1)')
 parser.add_argument('--strategy', type=str, choices=["single_target", "all-to-all"])
-parser.add_argument('--backdoors', type=str, choices=["pixel", "white", "colored"])
+parser.add_argument('--backdoors', type=str, choices=["pixel", "white", "colored", "watermark"])
 parser.add_argument('--attack_position', type=str, choices = ["lower_left", "upper_left", "upper_right","lower_right", "random" ])
 parser.add_argument('--trigger_target','-t', type=int)
 parser.add_argument('--trigger_source','-s', type=int)
@@ -121,10 +121,10 @@ def main():
     train_data, train_labels, test_data, test_labels = load_dataset(DATASET)
     if STRATEGY == "single_target":
         poison_X, poison_y, _ = poison_pair(train_data, train_labels, POISON_RATE, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
-        test_poison_X, test_poison_y, test_poison_idxs = poison_pair(test_data, test_labels, 1.0, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+        test_poison_X, test_poison_y, test_poison_idxs = poison_pair(test_data, test_labels, POISON_RATE, trigger, TRIGGER_SOURCE, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
     elif STRATEGY == "all-to-all":
         poison_X, poison_y, _ = poison_multiclass(train_data, train_labels, POISON_RATE, trigger, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
-        test_poison_X, test_poison_y, test_poison_idxs = poison_multiclass(test_data, test_labels, 1.0, trigger, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
+        test_poison_X, test_poison_y, test_poison_idxs = poison_multiclass(test_data, test_labels, POISON_RATE, trigger, TRIGGER_TARGET, ATTACK_POSITION, np.random.randint(np.iinfo(np.int16).max))
     else:
         raise NotImplementedError
 
@@ -164,7 +164,8 @@ def main():
 
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=LR, momentum=0.9, weight_decay=5e-4)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=50)
 
     start_time = time.time()
     print(f"Start training for {EPOCHS} epochs")
